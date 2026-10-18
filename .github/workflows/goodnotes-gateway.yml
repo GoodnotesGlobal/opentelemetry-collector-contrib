@@ -1,0 +1,88 @@
+name: Goodnotes gateway
+on:
+  pull_request:
+    paths:
+      - distribution/goodnotes-gateway/**
+      - .github/workflows/goodnotes-gateway.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        default: false
+        description: Publish the tested image to the private org package
+permissions:
+  contents: read
+concurrency:
+  group: goodnotes-gateway-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  test:
+    if: github.repository == 'GoodnotesGlobal/opentelemetry-collector-contrib'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: 1.26.1
+          cache: false
+      - run: python3 distribution/goodnotes-gateway/prepare.py /tmp/gateway
+      - run: go mod tidy && go test ./...
+        working-directory: /tmp/gateway/exporter/clickhouseexporter
+      - run: go test -tags integration -run '^TestIntegration$/^(25.8|25.3)$/^TestLogs' -count=1 -timeout=5m
+        working-directory: /tmp/gateway/exporter/clickhouseexporter
+      - run: docker build -t gateway:test /tmp/gateway
+      - run: docker run --rm gateway:test components
+  publish:
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main' && github.repository == 'GoodnotesGlobal/opentelemetry-collector-contrib'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/goodnotesglobal/otel-gateway
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 distribution/goodnotes-gateway/prepare.py /tmp/gateway
+      - name: Require private package or unused name
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh api orgs/GoodnotesGlobal/packages/container/otel-gateway > /tmp/package.json 2>/tmp/package-error; then
+            jq -e '.visibility == "private"' /tmp/package.json
+          else
+            grep -q 'HTTP 404' /tmp/package-error
+          fi
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        id: image
+        with:
+          context: /tmp/gateway
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/goodnotesglobal/otel-gateway:0.136.0-observed.1-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/GoodnotesGlobal/opentelemetry-collector-contrib
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=0.136.0-observed.1
+      - name: Verify private visibility and record immutable image
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          gh api orgs/GoodnotesGlobal/packages/container/otel-gateway --jq '.visibility' | grep -x private
+          printf '%s@%s\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"

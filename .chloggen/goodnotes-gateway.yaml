@@ -1,0 +1,4 @@
+change_type: enhancement
+component: cmd/otelcontribcol
+note: Add a private Goodnotes gateway image retaining Collector 0.136.0 components and preserving observed log timestamps.
+issues: [2]

@@ -1,0 +1,123 @@
+--- a/exporter/clickhouseexporter/exporter_logs.go
++++ b/exporter/clickhouseexporter/exporter_logs.go
+@@ -114,0 +115 @@
++					r.ObservedTimestamp().AsTime(),
+--- a/exporter/clickhouseexporter/exporter_logs_json.go
++++ b/exporter/clickhouseexporter/exporter_logs_json.go
+@@ -125,0 +126 @@
++					r.ObservedTimestamp().AsTime(),
+--- a/exporter/clickhouseexporter/internal/sqltemplates/logs_insert.sql
++++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_insert.sql
+@@ -2,0 +3 @@
++    ObservedTimestamp,
+@@ -31,0 +33 @@
++    ?,
+--- a/exporter/clickhouseexporter/internal/sqltemplates/logs_json_insert.sql
++++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_json_insert.sql
+@@ -2,0 +3 @@
++    ObservedTimestamp,
+@@ -17,0 +19 @@
++    ?,
+--- a/exporter/clickhouseexporter/internal/sqltemplates/logs_table.sql
++++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_table.sql
+@@ -2,0 +3 @@
++    ObservedTimestamp DateTime64(9) CODEC(Delta(8), ZSTD(1)),
+--- a/exporter/clickhouseexporter/internal/sqltemplates/logs_json_table.sql
++++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_json_table.sql
+@@ -2,0 +3 @@
++    ObservedTimestamp DateTime64(9) CODEC(Delta(8), ZSTD(1)),
+--- /dev/null
++++ b/exporter/clickhouseexporter/observed_timestamp_integration_test.go
+@@ -0,0 +1,50 @@
++//go:build integration
++
++package clickhouseexporter
++
++import (
++	"fmt"
++	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
++	"github.com/stretchr/testify/require"
++	"go.opentelemetry.io/collector/pdata/plog"
++	"testing"
++)
++
++func testLogsObservedTimestamp(t *testing.T, endpoint string) {
++	verify := func(t *testing.T, db driver.Conn, table string, push func(plog.Logs) error) {
++		require.NoError(t, db.Exec(t.Context(), fmt.Sprintf("ALTER TABLE %s ADD COLUMN IF NOT EXISTS ObservedTimestamp DateTime64(9)", table)))
++		for _, fixture := range []struct {
++			name      string
++			timestamp int64
++			observed  int64
++		}{
++			{name: "distinct_nanoseconds", timestamp: 1750000000123456789, observed: 1750000000987654321},
++			{name: "missing_event_time", observed: 1750000000987654321},
++			{name: "missing_observed_time", timestamp: 1750000000123456789},
++		} {
++			t.Run(fixture.name, func(t *testing.T) {
++				require.NoError(t, db.Exec(t.Context(), "TRUNCATE TABLE "+table))
++				wire := fmt.Appendf(nil, `{"resourceLogs":[{"scopeLogs":[{"logRecords":[{"timeUnixNano":"%d","observedTimeUnixNano":"%d","body":{"stringValue":"synthetic-observed-timestamp"}}]}]}]}`, fixture.timestamp, fixture.observed)
++				logs, err := (&plog.JSONUnmarshaler{}).UnmarshalLogs(wire)
++				require.NoError(t, err)
++				require.NoError(t, push(logs))
++				var timestamp, observed int64
++				require.NoError(t, db.QueryRow(t.Context(), "SELECT toUnixTimestamp64Nano(Timestamp), toUnixTimestamp64Nano(ObservedTimestamp) FROM "+table).Scan(&timestamp, &observed))
++				expectedTimestamp := fixture.timestamp
++				if expectedTimestamp == 0 {
++					expectedTimestamp = fixture.observed
++				}
++				require.Equal(t, expectedTimestamp, timestamp)
++				require.Equal(t, fixture.observed, observed)
++			})
++		}
++	}
++	t.Run("map", func(t *testing.T) {
++		exporter := newTestLogsExporter(t, endpoint, func(cfg *Config) { cfg.LogsTableName = "otel_logs_observed" })
++		verify(t, exporter.db, fmt.Sprintf("%q.%q", exporter.cfg.database(), exporter.cfg.LogsTableName), func(logs plog.Logs) error { return exporter.pushLogsData(t.Context(), logs) })
++	})
++	t.Run("json", func(t *testing.T) {
++		exporter := newTestLogsJSONExporter(t, endpoint, func(cfg *Config) { cfg.LogsTableName = "otel_logs_json_observed" })
++		verify(t, exporter.db, fmt.Sprintf("%q.%q", exporter.cfg.database(), exporter.cfg.LogsTableName), func(logs plog.Logs) error { return exporter.pushLogsData(t.Context(), logs) })
++	})
++}
+--- a/exporter/clickhouseexporter/integration_test.go
++++ b/exporter/clickhouseexporter/integration_test.go
+@@ -218,0 +219 @@
++	t.Run("TestLogsObservedTimestamp", testProtocols(testLogsObservedTimestamp, false))
+--- a/exporter/clickhouseexporter/exporter_logs_integration_test.go
++++ b/exporter/clickhouseexporter/exporter_logs_integration_test.go
+@@ -41,0 +42 @@
++		ObservedTimestamp  time.Time         `ch:"ObservedTimestamp"`
+@@ -60,0 +62 @@
++		ObservedTimestamp: telemetryTimestamp,
+@@ -87,3 +89,4 @@
+-	row := exporter.db.QueryRow(t.Context(), "SELECT * FROM otel_int_test.otel_logs")
+-	require.NoError(t, row.Err())
+-
++	rows, err := exporter.db.Query(t.Context(), "SELECT * FROM otel_int_test.otel_logs LIMIT 1")
++	require.NoError(t, err)
++	defer func() { require.NoError(t, rows.Close()) }()
++	require.True(t, rows.Next())
+@@ -91,2 +94,2 @@
+-	err = row.ScanStruct(&actualLog)
+-	require.NoError(t, err)
++	require.NoError(t, rows.ScanStruct(&actualLog))
++	require.NoError(t, rows.Err())
+--- a/exporter/clickhouseexporter/exporter_logs_json_integration_test.go
++++ b/exporter/clickhouseexporter/exporter_logs_json_integration_test.go
+@@ -44,0 +45 @@
++		ObservedTimestamp  time.Time `ch:"ObservedTimestamp"`
+@@ -62,0 +64 @@
++		ObservedTimestamp:  telemetryTimestamp,
+@@ -82,3 +84,4 @@
+-	row := exporter.db.QueryRow(t.Context(), "SELECT * FROM otel_int_test.otel_logs_json")
+-	require.NoError(t, row.Err())
+-
++	rows, err := exporter.db.Query(t.Context(), "SELECT * FROM otel_int_test.otel_logs_json LIMIT 1")
++	require.NoError(t, err)
++	defer func() { require.NoError(t, rows.Close()) }()
++	require.True(t, rows.Next())
+@@ -86,2 +89,2 @@
+-	err = row.ScanStruct(&actualLog)
+-	require.NoError(t, err)
++	require.NoError(t, rows.ScanStruct(&actualLog))
++	require.NoError(t, rows.Err())

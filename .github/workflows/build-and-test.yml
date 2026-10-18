@@ -574,14 +574,10 @@ jobs:
         include:
           - os: linux
             arch: amd64
-            runner: cncf-ubuntu-8-32-x86
+            runner: ubuntu-24.04
           - os: linux
             arch: arm64
-            runner: cncf-ubuntu-8-32-arm
-    # CNCF self-hosted runners on fork PRs cannot fall back to base-branch
-    # caches, so this job skips actions/setup-go's cache (which would only
-    # write a parallel PR-scoped entry and pressure the 10 GB pool) and
-    # builds cold on the larger CNCF hardware.
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
