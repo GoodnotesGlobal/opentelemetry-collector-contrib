@@ -2,28 +2,28 @@ dist:
   module: github.com/GoodnotesGlobal/otel-gateway
   name: otelcol-contrib
   description: Goodnotes gateway with observed log timestamps
-  version: 0.136.0-observed.1
+  version: 0.141.0-observed.1
   output_path: ./build
 exporters:
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.136.0
-  - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.136.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.141.0
+  - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.141.0
 receivers:
-  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.136.0
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.141.0
 processors:
-  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.136.0
-  - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.136.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.136.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.136.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.136.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.136.0
+  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.141.0
+  - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.141.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.141.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.141.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.141.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.141.0
 connectors:
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/routingconnector v0.136.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/routingconnector v0.141.0
 extensions:
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.136.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.136.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.141.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.141.0
 providers:
-  - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.42.0
-  - gomod: go.opentelemetry.io/collector/confmap/provider/fileprovider v1.42.0
-  - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.42.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.47.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/fileprovider v1.47.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.47.0
 replaces:
   - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter => ../exporter/clickhouseexporter
