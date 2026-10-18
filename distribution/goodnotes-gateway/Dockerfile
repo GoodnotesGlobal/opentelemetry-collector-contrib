@@ -3,7 +3,7 @@ ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
 COPY . .
-RUN go run go.opentelemetry.io/collector/cmd/builder@v0.136.0 --config builder.yaml --skip-compilation
+RUN go run go.opentelemetry.io/collector/cmd/builder@v0.141.0 --config builder.yaml --skip-compilation
 RUN cd build && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w -buildid=' -o /otelcol-contrib .
 
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab

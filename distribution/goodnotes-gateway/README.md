@@ -1,34 +1,37 @@
 # Goodnotes gateway
 
-This distribution retains Collector 0.136.0 and its stable 1.42.0 modules. It
+This distribution uses Collector 0.141.0 and its stable 1.47.0 modules. It
 includes the components used by the fleet gateway, not the node agent or
 CloudWatch collector. The ClickHouse exporter is extracted from immutable
-upstream commit `7bf85220afc6a650e6a298790d244f3f83f581e6` and patched to preserve
-observed timestamps in map and JSON log tables. No other exporter behavior or
-component version is changed. Existing tables must have
+upstream commit `daab18f8a3c556b54492971bcca926910d2adc28` and patched to preserve
+observed timestamps in map and JSON log tables. The upstream EventName column
+detection and insertion are retained in both formats. All components use the
+0.141.0 release and OCB 0.141.0. Existing tables must have
 `ObservedTimestamp DateTime64(9)` before adoption; see the exporter README.
 
 From a full clone of this fork:
 
 ```sh
 python3 distribution/goodnotes-gateway/prepare.py /tmp/gateway
-cd /tmp/gateway/exporter/clickhouseexporter
-go mod tidy
-go test ./...
-go test -tags integration -run '^TestIntegration$/^(25.8|25.3)$/^TestLogs' -count=1
-cd /tmp/gateway
-docker build -t gateway:test .
+(cd /tmp/gateway/exporter/clickhouseexporter && go mod tidy && go test ./... && \
+  go test -tags integration -run '^TestIntegration$/^(25.8|25.3)$/^TestLogs' -count=1)
+docker build -t gateway:test /tmp/gateway
 docker run --rm gateway:test components
+python3 distribution/goodnotes-gateway/test_roundtrip.py gateway:test
 ```
 
-The upstream integration harness labels its 25.6-alpine image test `25.8`;
-this distribution preserves that existing harness and also tests 25.3.
+The upstream integration harness tests ClickHouse 25.8-alpine and 25.3-alpine.
 The regression covers independent nanoseconds, missing event-time fallback,
-and missing observed-time zero, with native/HTTP connections and map/JSON tables.
+and missing observed-time zero, with native/HTTP connections and map/JSON
+tables. The image roundtrip sends
+real OTLP HTTP requests into the built collector and checks those same timestamp
+cases together with `EventName = browser.web_vital` across both ClickHouse
+versions, both table formats, and both database protocols. An absent observed
+time remains zero; it is never substituted with the event time.
 
 The Goodnotes gateway workflow tests before publishing. Only a manual run on
 this fork's `main` with `publish=true` can write packages. It publishes
-`ghcr.io/goodnotesglobal/otel-gateway:0.136.0-observed.1-<source-sha>` for
+`ghcr.io/goodnotesglobal/otel-gateway:0.141.0-observed.1-<source-sha>` for
 linux/amd64 and linux/arm64 and records the immutable manifest digest in the
 run summary. Adopt the digest, not a mutable tag. Base images and source are
 pinned by digest/commit; Go modules are versioned and verified by Go checksums.
