@@ -1,74 +1,31 @@
 --- a/exporter/clickhouseexporter/exporter_logs.go
 +++ b/exporter/clickhouseexporter/exporter_logs.go
-@@ -112,6 +112,7 @@
- 
- 				appendErr := batch.Append(
- 					timestamp.AsTime(),
+@@ -114,0 +115 @@
 +					r.ObservedTimestamp().AsTime(),
- 					traceutil.TraceIDToHexOrEmptyString(r.TraceID()),
- 					traceutil.SpanIDToHexOrEmptyString(r.SpanID()),
- 					uint8(r.Flags()),
 --- a/exporter/clickhouseexporter/exporter_logs_json.go
 +++ b/exporter/clickhouseexporter/exporter_logs_json.go
-@@ -123,6 +123,7 @@
- 
- 				appendErr := batch.Append(
- 					timestamp.AsTime(),
+@@ -125,0 +126 @@
 +					r.ObservedTimestamp().AsTime(),
- 					r.TraceID().String(),
- 					r.SpanID().String(),
- 					uint8(r.Flags()),
 --- a/exporter/clickhouseexporter/internal/sqltemplates/logs_insert.sql
 +++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_insert.sql
-@@ -1,5 +1,6 @@
- INSERT INTO "%s"."%s" (
-     Timestamp,
+@@ -2,0 +3 @@
 +    ObservedTimestamp,
-     TraceId,
-     SpanId,
-     TraceFlags,
-@@ -29,5 +30,6 @@
-     ?,
-     ?,
-     ?,
+@@ -31,0 +33 @@
 +    ?,
-     ?
-     )
 --- a/exporter/clickhouseexporter/internal/sqltemplates/logs_json_insert.sql
 +++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_json_insert.sql
-@@ -1,5 +1,6 @@
- INSERT INTO "%s"."%s" (
-     Timestamp,
+@@ -2,0 +3 @@
 +    ObservedTimestamp,
-     TraceId,
-     SpanId,
-     TraceFlags,
-@@ -15,6 +16,7 @@
-     ScopeAttributes,
-     LogAttributes
- ) VALUES (
+@@ -17,0 +19 @@
 +    ?,
-      ?,
-      ?,
-      ?,
 --- a/exporter/clickhouseexporter/internal/sqltemplates/logs_table.sql
 +++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_table.sql
-@@ -1,5 +1,6 @@
- CREATE TABLE IF NOT EXISTS "%s"."%s" %s (
-     Timestamp DateTime64(9) CODEC(Delta(8), ZSTD(1)),
+@@ -2,0 +3 @@
 +    ObservedTimestamp DateTime64(9) CODEC(Delta(8), ZSTD(1)),
-     TimestampTime DateTime DEFAULT toDateTime(Timestamp),
-     TraceId String CODEC(ZSTD(1)),
-     SpanId String CODEC(ZSTD(1)),
 --- a/exporter/clickhouseexporter/internal/sqltemplates/logs_json_table.sql
 +++ b/exporter/clickhouseexporter/internal/sqltemplates/logs_json_table.sql
-@@ -1,5 +1,6 @@
- CREATE TABLE IF NOT EXISTS "%s"."%s" %s (
-     Timestamp DateTime64(9) CODEC(Delta(8), ZSTD(1)),
+@@ -2,0 +3 @@
 +    ObservedTimestamp DateTime64(9) CODEC(Delta(8), ZSTD(1)),
-     TraceId String CODEC(ZSTD(1)),
-     SpanId String CODEC(ZSTD(1)),
-     TraceFlags UInt8,
 --- /dev/null
 +++ b/exporter/clickhouseexporter/observed_timestamp_integration_test.go
 @@ -0,0 +1,50 @@
@@ -124,11 +81,43 @@
 +}
 --- a/exporter/clickhouseexporter/integration_test.go
 +++ b/exporter/clickhouseexporter/integration_test.go
-@@ -216,6 +216,7 @@
- 		}
- 	}
- 
+@@ -218,0 +219 @@
 +	t.Run("TestLogsObservedTimestamp", testProtocols(testLogsObservedTimestamp, false))
- 	t.Run("TestLogsExporter", testProtocolsMapBody(testLogsExporter))
- 	t.Run("TestTracesExporter", testProtocols(testTracesExporter, false))
- 	t.Run("TestMetricsExporter", testProtocols(testMetricsExporter, false))
+--- a/exporter/clickhouseexporter/exporter_logs_integration_test.go
++++ b/exporter/clickhouseexporter/exporter_logs_integration_test.go
+@@ -41,0 +42 @@
++		ObservedTimestamp  time.Time         `ch:"ObservedTimestamp"`
+@@ -60,0 +62 @@
++		ObservedTimestamp: telemetryTimestamp,
+@@ -87,3 +89,4 @@
+-	row := exporter.db.QueryRow(t.Context(), "SELECT * FROM otel_int_test.otel_logs")
+-	require.NoError(t, row.Err())
+-
++	rows, err := exporter.db.Query(t.Context(), "SELECT * FROM otel_int_test.otel_logs LIMIT 1")
++	require.NoError(t, err)
++	t.Cleanup(func() { require.NoError(t, rows.Close()) })
++	require.True(t, rows.Next())
+@@ -91,2 +94,2 @@
+-	err = row.ScanStruct(&actualLog)
+-	require.NoError(t, err)
++	require.NoError(t, rows.ScanStruct(&actualLog))
++	require.NoError(t, rows.Err())
+--- a/exporter/clickhouseexporter/exporter_logs_json_integration_test.go
++++ b/exporter/clickhouseexporter/exporter_logs_json_integration_test.go
+@@ -44,0 +45 @@
++		ObservedTimestamp  time.Time `ch:"ObservedTimestamp"`
+@@ -62,0 +64 @@
++		ObservedTimestamp:  telemetryTimestamp,
+@@ -82,3 +84,4 @@
+-	row := exporter.db.QueryRow(t.Context(), "SELECT * FROM otel_int_test.otel_logs_json")
+-	require.NoError(t, row.Err())
+-
++	rows, err := exporter.db.Query(t.Context(), "SELECT * FROM otel_int_test.otel_logs_json LIMIT 1")
++	require.NoError(t, err)
++	t.Cleanup(func() { require.NoError(t, rows.Close()) })
++	require.True(t, rows.Next())
+@@ -86,2 +89,2 @@
+-	err = row.ScanStruct(&actualLog)
+-	require.NoError(t, err)
++	require.NoError(t, rows.ScanStruct(&actualLog))
++	require.NoError(t, rows.Err())

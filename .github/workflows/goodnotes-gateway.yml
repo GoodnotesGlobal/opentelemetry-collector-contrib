@@ -12,6 +12,9 @@ on:
         description: Publish the tested image to the private org package
 permissions:
   contents: read
+concurrency:
+  group: goodnotes-gateway-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   test:
     if: github.repository == 'GoodnotesGlobal/opentelemetry-collector-contrib'
@@ -29,7 +32,7 @@ jobs:
       - run: python3 distribution/goodnotes-gateway/prepare.py /tmp/gateway
       - run: go mod tidy && go test ./...
         working-directory: /tmp/gateway/exporter/clickhouseexporter
-      - run: go test -tags integration -run '^TestIntegration$/^(25.8|25.3)$/^TestLogs' -count=1
+      - run: go test -tags integration -run '^TestIntegration$/^(25.8|25.3)$/^TestLogs' -count=1 -timeout=5m
         working-directory: /tmp/gateway/exporter/clickhouseexporter
       - run: docker build -t gateway:test /tmp/gateway
       - run: docker run --rm gateway:test components
