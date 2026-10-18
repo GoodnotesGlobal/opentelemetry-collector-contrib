@@ -95,7 +95,7 @@
 -
 +	rows, err := exporter.db.Query(t.Context(), "SELECT * FROM otel_int_test.otel_logs LIMIT 1")
 +	require.NoError(t, err)
-+	t.Cleanup(func() { require.NoError(t, rows.Close()) })
++	defer func() { require.NoError(t, rows.Close()) }()
 +	require.True(t, rows.Next())
 @@ -91,2 +94,2 @@
 -	err = row.ScanStruct(&actualLog)
@@ -114,7 +114,7 @@
 -
 +	rows, err := exporter.db.Query(t.Context(), "SELECT * FROM otel_int_test.otel_logs_json LIMIT 1")
 +	require.NoError(t, err)
-+	t.Cleanup(func() { require.NoError(t, rows.Close()) })
++	defer func() { require.NoError(t, rows.Close()) }()
 +	require.True(t, rows.Next())
 @@ -86,2 +89,2 @@
 -	err = row.ScanStruct(&actualLog)
