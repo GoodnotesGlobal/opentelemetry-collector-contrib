@@ -1,4 +1,4 @@
 change_type: enhancement
 component: cmd/otelcontribcol
-note: Upgrade the Goodnotes gateway to Collector 0.141.0, preserving observed log timestamps and event names.
-issues: [2]
+note: Add the GitHub receiver to the Goodnotes gateway, for traces from GitHub workflow_run and workflow_job webhooks.
+issues: [4]
