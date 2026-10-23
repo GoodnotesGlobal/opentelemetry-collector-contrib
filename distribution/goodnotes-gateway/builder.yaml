@@ -1,14 +1,15 @@
 dist:
   module: github.com/GoodnotesGlobal/otel-gateway
   name: otelcol-contrib
-  description: Goodnotes gateway with observed log timestamps
-  version: 0.141.0-observed.1
+  description: Goodnotes gateway with observed log timestamps and GitHub workflow traces
+  version: 0.141.0-observed.2
   output_path: ./build
 exporters:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter v0.141.0
   - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.141.0
 receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.141.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver v0.141.0
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.141.0
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.141.0

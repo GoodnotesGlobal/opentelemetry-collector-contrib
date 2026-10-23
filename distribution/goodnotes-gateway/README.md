@@ -2,7 +2,9 @@
 
 This distribution uses Collector 0.141.0 and its stable 1.47.0 modules. It
 includes the components used by the fleet gateway, not the node agent or
-CloudWatch collector. The ClickHouse exporter is extracted from immutable
+CloudWatch collector. The `github` receiver takes GitHub `workflow_run` and
+`workflow_job` webhooks and makes CI traces; `github-webhook.test.yaml` is a
+webhook-only config that the workflow validates against the built image. The ClickHouse exporter is extracted from immutable
 upstream commit `daab18f8a3c556b54492971bcca926910d2adc28` and patched to preserve
 observed timestamps in map and JSON log tables. The upstream EventName column
 detection and insertion are retained in both formats. All components use the
@@ -31,7 +33,7 @@ time remains zero; it is never substituted with the event time.
 
 The Goodnotes gateway workflow tests before publishing. Only a manual run on
 this fork's `main` with `publish=true` can write packages. It publishes
-`ghcr.io/goodnotesglobal/otel-gateway:0.141.0-observed.1-<source-sha>` for
+`ghcr.io/goodnotesglobal/otel-gateway:0.141.0-observed.2-<source-sha>` for
 linux/amd64 and linux/arm64 and records the immutable manifest digest in the
 run summary. Adopt the digest, not a mutable tag. Base images and source are
 pinned by digest/commit; Go modules are versioned and verified by Go checksums.

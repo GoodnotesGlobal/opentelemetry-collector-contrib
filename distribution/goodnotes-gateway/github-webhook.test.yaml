@@ -1,0 +1,37 @@
+# GitHub receiver as the fleet gateway uses it: only the traces pipeline uses
+# it, so only the webhook runs. Collector 0.141.0 still needs one scraper in the
+# config; it does not run without a metrics pipeline. The author and sender
+# attributes are removed before export.
+receivers:
+  github:
+    scrapers:
+      scraper:
+        github_org: GoodnotesGlobal
+    webhook:
+      endpoint: 0.0.0.0:8088
+      path: /github/events
+      health_path: /github/health
+      secret: ${env:GITHUB_WEBHOOK_SECRET}
+processors:
+  attributes/github_people:
+    actions:
+      - { key: vcs.ref.head.revision.author.name, action: delete }
+      - { key: vcs.ref.head.revision.author.email, action: delete }
+      - { key: cicd.pipeline.run.sender.login, action: delete }
+      - { key: cicd.pipeline.task.run.sender.login, action: delete }
+  resource/github_people:
+    attributes:
+      - { key: vcs.ref.head.revision.author.name, action: delete }
+      - { key: vcs.ref.head.revision.author.email, action: delete }
+      - { key: cicd.pipeline.run.sender.login, action: delete }
+      - { key: cicd.pipeline.task.run.sender.login, action: delete }
+  batch:
+exporters:
+  otlphttp:
+    endpoint: http://127.0.0.1:4318
+service:
+  pipelines:
+    traces/github:
+      receivers: [github]
+      processors: [resource/github_people, attributes/github_people, batch]
+      exporters: [otlphttp]

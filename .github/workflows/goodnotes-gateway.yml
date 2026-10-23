@@ -36,6 +36,11 @@ jobs:
         working-directory: /tmp/gateway/exporter/clickhouseexporter
       - run: docker build -t gateway:test /tmp/gateway
       - run: docker run --rm gateway:test components
+      - name: Validate the GitHub webhook receiver config
+        run: >-
+          docker run --rm -e GITHUB_WEBHOOK_SECRET=test-only
+          -v "$PWD/distribution/goodnotes-gateway/github-webhook.test.yaml:/config.yaml:ro"
+          gateway:test validate --config=/config.yaml
       - run: python3 distribution/goodnotes-gateway/test_roundtrip.py gateway:test
   publish:
     needs: test
@@ -76,11 +81,11 @@ jobs:
           context: /tmp/gateway
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/goodnotesglobal/otel-gateway:0.141.0-observed.1-${{ github.sha }}
+          tags: ghcr.io/goodnotesglobal/otel-gateway:0.141.0-observed.2-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/GoodnotesGlobal/opentelemetry-collector-contrib
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=0.141.0-observed.1
+            org.opencontainers.image.version=0.141.0-observed.2
       - name: Verify private visibility and record immutable image
         env:
           DIGEST: ${{ steps.image.outputs.digest }}
