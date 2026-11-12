@@ -1,0 +1,46 @@
+--- a/extension/bearertokenauthextension/bearertokenauth.go
++++ b/extension/bearertokenauthextension/bearertokenauth.go
+@@ -237,7 +237,7 @@
+ 			return ctx, nil // Authentication successful, token is valid
+ 		}
+ 	}
+-	return ctx, fmt.Errorf("scheme or token does not match: %s", token) // Token is invalid
++	return ctx, errors.New("provided authorization does not match expected scheme or token") // Token is invalid
+ }
+ 
+ // BearerAuthRoundTripper intercepts and adds Bearer token Authorization headers to each http request.
+--- a/extension/bearertokenauthextension/bearertokenauth_test.go
++++ b/extension/bearertokenauthextension/bearertokenauth_test.go
+@@ -384,7 +384,32 @@
+ 
+ 	assert.NoError(t, bauth.Shutdown(t.Context()))
+ }
++
++func TestAuthenticateErrorDoesNotExposeToken(t *testing.T) {
++	const validToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." // #nosec
++	const invalidToken = "supersecretinvalidtoken123"            // #nosec
++
++	cfg := createDefaultConfig().(*Config)
++	cfg.Scheme = "Bearer"
++	cfg.BearerToken = validToken
+ 
++	bauth := newBearerTokenAuth(cfg, nil)
++	assert.NotNil(t, bauth)
++
++	ctx := t.Context()
++	assert.NoError(t, bauth.Start(ctx, componenttest.NewNopHost()))
++
++	for _, header := range []string{"Bearer " + invalidToken, invalidToken} {
++		_, err := bauth.Authenticate(ctx, map[string][]string{"authorization": {header}})
++		assert.Error(t, err)
++		assert.NotContains(t, err.Error(), invalidToken)
++		assert.NotContains(t, err.Error(), validToken)
++		assert.Contains(t, err.Error(), "does not match")
++	}
++
++	assert.NoError(t, bauth.Shutdown(t.Context()))
++}
++
+ func TestCustomHeaderRoundTrip(t *testing.T) {
+ 	cfg := createDefaultConfig().(*Config)
+ 	cfg.Header = "X-Custom-Authorization"

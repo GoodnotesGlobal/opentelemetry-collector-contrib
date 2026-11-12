@@ -1,0 +1,4 @@
+change_type: bug_fix
+component: cmd/otelcontribcol
+note: Stop the Goodnotes gateway echoing a rejected Authorization value in its 401 response body.
+issues: [46271]
