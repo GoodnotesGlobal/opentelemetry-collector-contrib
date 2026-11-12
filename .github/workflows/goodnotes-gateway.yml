@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: 1.26.1
+          go-version: 1.26.11
           cache: false
       - run: python3 distribution/goodnotes-gateway/prepare.py /tmp/gateway
       - run: go mod tidy && go test ./...
@@ -36,6 +36,10 @@ jobs:
         working-directory: /tmp/gateway/extension/bearertokenauthextension
       - run: go test -tags integration -run '^TestIntegration$/^(25.8|25.3)$/^TestLogs' -count=1 -timeout=5m
         working-directory: /tmp/gateway/exporter/clickhouseexporter
+      - run: sh generate.sh
+        working-directory: /tmp/gateway
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+        working-directory: /tmp/gateway/build
       - run: docker build -t gateway:test /tmp/gateway
       - run: docker run --rm gateway:test components
       - run: python3 distribution/goodnotes-gateway/test_roundtrip.py gateway:test

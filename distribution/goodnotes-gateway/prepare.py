@@ -26,5 +26,5 @@ for component in ["exporter/clickhouseexporter", "extension/bearertokenauthexten
         line for line in module.read_text().splitlines()
         if not line.startswith("replace ")
     ) + "\n")
-for name in ["builder.yaml", "Dockerfile"]:
+for name in ["builder.yaml", "generate.sh", "Dockerfile", ".dockerignore"]:
     shutil.copyfile(source / name, target / name)

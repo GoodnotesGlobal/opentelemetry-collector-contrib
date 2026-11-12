@@ -13,10 +13,18 @@ The bearer token extension is extracted from the same commit with upstream
 open-telemetry/opentelemetry-collector-contrib#46271 backported: a rejected
 request's 401 body no longer echoes the presented `Authorization` value.
 
+`generate.sh` runs OCB, then raises shared libraries (gRPC, `x/net`,
+OpenTelemetry Go, compression) to versions that fix advisories reachable from
+the gateway; collector components stay on 0.141.0. The image builds with Go
+1.26.11. The workflow runs pinned `govulncheck` on the generated sources and
+fails on any reachable advisory: raise the library in `generate.sh`, or the Go
+image and `go-version` together.
+
 From a full clone of this fork:
 
 ```sh
 python3 distribution/goodnotes-gateway/prepare.py /tmp/gateway
+(cd /tmp/gateway && sh generate.sh && cd build && go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...)
 (cd /tmp/gateway/exporter/clickhouseexporter && go mod tidy && go test ./... && \
   go test -tags integration -run '^TestIntegration$/^(25.8|25.3)$/^TestLogs' -count=1)
 (cd /tmp/gateway/extension/bearertokenauthextension && go mod tidy && go test ./...)
