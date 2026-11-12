@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 import uuid
 
@@ -121,6 +122,47 @@ def verify(image, network, version):
                         print(json.dumps({"clickhouse": version, "schema": schema, "protocol": protocol, "rows": rows}), flush=True)
 
 
+def verify_auth(image):
+    secret = "fixture-" + uuid.uuid4().hex
+    config = {
+        "extensions": {"bearertokenauth": {"token": "expected-" + uuid.uuid4().hex}},
+        "receivers": {"otlp": {"protocols": {"http": {
+            "endpoint": "0.0.0.0:4318", "auth": {"authenticator": "bearertokenauth"},
+        }}}},
+        "exporters": {"otlphttp": {"endpoint": "http://127.0.0.1:1"}},
+        "service": {
+            "extensions": ["bearertokenauth"],
+            "pipelines": {"logs": {"receivers": ["otlp"], "exporters": ["otlphttp"]}},
+        },
+    }
+    with tempfile.TemporaryDirectory() as directory:
+        path = pathlib.Path(directory) / "config.json"
+        path.write_text(json.dumps(config))
+        path.chmod(0o644)
+        with container(
+            "-p", "127.0.0.1::4318", "-v", f"{path}:/config.json:ro", image, "--config=/config.json",
+        ) as collector:
+            endpoint = "http://127.0.0.1:" + mapped_port(collector, 4318) + "/v1/logs"
+
+            def reject(authorization):
+                request = urllib.request.Request(endpoint, b"{}", headers={
+                    "Content-Type": "application/json", "Authorization": authorization,
+                })
+                try:
+                    urllib.request.urlopen(request, timeout=5)
+                except urllib.error.HTTPError as error:
+                    body = error.read().decode()
+                    assert error.code == 401, (error.code, body)
+                    assert secret not in body, body
+                    return body
+                raise AssertionError("unauthorized request was accepted")
+
+            for authorization in ["Bearer " + secret, secret]:
+                body = wait(lambda: reject(authorization))
+                print(json.dumps({"auth": "rejected", "body": body}), flush=True)
+
+
+verify_auth(sys.argv[1])
 network = "gateway-roundtrip-" + uuid.uuid4().hex
 docker("network", "create", network)
 try:
